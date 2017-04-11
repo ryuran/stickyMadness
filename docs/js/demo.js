@@ -44,373 +44,324 @@
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (root, factory) {
-	    if (true) {
-	        // AMD
-	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(1), __webpack_require__(2)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-	    } else if (typeof exports === 'object') {
-	        // Node, CommonJS-like
-	        module.exports = factory(require('checkvisibility'), require('element-closest'));
-	    } else {
-	        // Browser globals (root is window)
-	        root.Sticky = factory(root.CheckVisibility);
-	    }
-	}(this, function (CheckVisibility) {
+	var APP = APP || {};
 
-			return (function (window, document) {
+	window.Sticky = __webpack_require__(1);
 
-				var defaultOptions = {
-					stickClass: 'js-sticked',
-					stuckClass: 'js-stuck',
-					stuckLimitSelector: '.js-sticky-container', // must be a ancestor of el
-					offsetTop: 0,
-					spacerElem: null,
-					onInit: function(elem){},
-					onEnabling: function(elem){},
-					onDisabling: function(elem){},
-					onStick: function(elem){},
-					onUnStick: function(elem){},
-					onStuck: function(elem){},
-					onUnStuck: function(elem){}
-				};
 
-				// utils
-				function isFunction(f) {
-					return f && Object.prototype.toString.call(f) === '[object Function]';
+	// MEDIA QUERY DEFINITION
+
+	APP.mediaQuery = {};
+	APP.mediaQuery.lg = window.matchMedia('(min-width: 1024px)');
+
+	APP.stickyElem = document.querySelector('.js-stickable');
+	APP.stickyElem.promArr = [];
+	APP.stickyElem.images = APP.stickyElem.querySelectorAll('img');
+
+
+	var header = document.getElementById('header');
+
+	// PROMISE API
+
+	APP.imgPromise = function (img) {
+
+		return new Promise(function (resolve, reject) {
+			img.addEventListener('load', function (e) {
+				// we can do more but keep it simple for the sake of the demo
+				resolve(img);
+			}, false);
+		});
+	};
+
+	// Create array of promises
+
+	Array.prototype.forEach.call(APP.stickyElem.images, function (img, i) {
+		// Stacking promise
+
+		APP.imgPromise(img).then(function (rep) {
+			rep.parentNode.classList.remove('loading');
+		});
+
+		APP.stickyElem.promArr.push(APP.imgPromise(img));
+	});
+
+	// Wait for all promise to be resolved
+
+	Promise.all(APP.stickyElem.promArr).then(function () {
+
+		if (APP.mediaQuery.lg.matches && !APP.stickyElem.sticky) {
+			// a l'init on instancie sticky si il est null et qu on est dans la bonne MQ
+			APP.stickyElem.sticky = new window.Sticky(APP.stickyElem,
+				{
+					offsetTop: function () {
+						return header.offsetHeight;
+					},
+
+					onInit: function(){ console.log('onInit')}, // (element)
+					onEnabling: function(){ console.log('onEnabling')}, // (element)
+					onDisabling: function(){ console.log('onDisabling')}, // (element)
+					onStick: function(){ console.log('onStick')}, // (element)
+					onUnStick: function(){ console.log('onUnStick')}, // (element)
+					onStuck: function(){ console.log('onStuck')}, // (element)
+					onUnStuck: function(){ console.log('onUnStuck')} // (element)
 				}
+			);
+		}
 
-				// @contructor
-				function Sticky(el, opt, jeaj) {
+		APP.mediaQuery.lg.addListener(function (e) {
 
-					this.options = defaultOptions;
-
-					if (opt) {
-						this.options.stickClass = opt.stickClass || defaultOptions.stickClass;
-						this.options.stuckClass = opt.stuckClass || defaultOptions.stuckClass;
-						this.options.stuckLimitSelector = opt.stuckLimitSelector || defaultOptions.stuckLimitSelector;
-						this.options.offsetTop = opt.offsetTop || defaultOptions.offsetTop;
-
-						this.options.onInit = opt.onInit || defaultOptions.onInit;
-						this.options.onEnabling = opt.onEnabling || defaultOptions.onEnabling;
-						this.options.onDisabling = opt.onDisabling || defaultOptions.onDisabling;
-
-						this.options.onStick = opt.onStick || defaultOptions.onStick;
-						this.options.onUnStick = opt.onUnStick || defaultOptions.onUnStick;
-						this.options.onStuck = opt.onStuck || defaultOptions.onStuck;
-						this.options.onUnStuck = opt.onUnStuck || defaultOptions.onUnStuck;
-						this.options.spacerElem = opt.spacerElem || defaultOptions.spacerElem;
-					}
-
-					this.el = el;
-					this.parent = this.el.parentNode;
-					this.stickyLimit = this.el.closest(this.options.stuckLimitSelector);
-					this.stickyLimitHeight = this.stickyLimit.offsetHeight;
-					this.spacerHeight = (this.options.spacerElem) ? this.options.spacerElem.offsetHeight : 0;
-					this.stuckLimit = (this.stickyLimit.offsetHeight - this.el.offsetHeight) - this.spacerHeight;
-
-					this.isSticked = null;
-					this.isStucked = null;
-
-					this.parentFromTop = 0;
-					this.lastScrollY = 0;
-
-					this.ticking = false;
-					this.raf = null;
-
-					this.isOffsetFunction = isFunction(this.options.offsetTop);
-
-					this.offsetTop = this.isOffsetFunction ? this.options.offsetTop() : this.options.offsetTop || 0;
-
-					this.initialized = false;
-					this.init();
+			if (e.matches) {
+				if (!APP.stickyElem.sticky) {
+					console.log('Match la MQ et sticky non instancié => on init');
+					APP.stickyElem.sticky = new window.Sticky(APP.stickyElem);
 				}
-
-				Sticky.prototype.init = function init() {
-					if(this.initialized || this.stickyLimit.offsetHeight <= this.parent.offsetHeight){
-						return;
-					}
-
-					this.options.onInit(this.el);
-
-					this.parent.checkVisibility = new CheckVisibility(this.parent);
-
-					// init handler on ready
-					this.onScroll();
-
-					this.onScroll = this.onScroll.bind(this);
-					this.onResize = this.onResize.bind(this);
-
-					window.addEventListener('scroll', this.onScroll);
-					window.addEventListener('resize', this.onResize);
-
-					this.initialized = true;
-				};
-
-				Sticky.prototype.onScroll = function onScroll() {
-					this.lastScrollY = window.scrollY;
-					this.requestTick();
-				};
-
-				Sticky.prototype.onResize = function onResize() {
-					// refresh calculation
-					this.updateStuckLimit();
-				};
-
-				Sticky.prototype.requestTick = function requestTick() {
-
-					if (!this.ticking) {
-						this.raf = window.requestAnimationFrame(this.stickOrStuck.bind(this));
-						this.ticking = true;
-					}
-				};
-
-				Sticky.prototype.disable = function disable() {
-
-					// remove event handler and clean class relative to the sticky state
-					window.removeEventListener('scroll', this.onScroll);
-					window.removeEventListener('resize', this.onResize);
-
-					this.el.classList.remove(this.options.stickClass);
-					this.el.classList.remove(this.options.stuckClass);
-
-					this.options.onDisabling(this.el);
-					this.el.style.removeProperty('top');
-				};
-
-				Sticky.prototype.enable = function enable() {
-
-					this.options.onEnabling(this.el);
-
-					this.onScroll();
-
-					this.onScroll = this.onScroll.bind(this);
-					this.onResize = this.onResize.bind(this);
-
-					window.addEventListener('scroll', this.onScroll);
-					window.addEventListener('resize', this.onResize);
-
-				};
-
-				Sticky.prototype.updateStuckLimit = function updateStuckLimit() {
-
-					this.stuckLimit = (this.stickyLimit.offsetHeight - this.el.offsetHeight) - this.spacerHeight;
-					this.offsetTop = this.isOffsetFunction ? this.options.offsetTop() : this.options.offsetTop || 0;
-
-					// var delta = this.parent.getBoundingClientRect().top - this.stickyLimit.getBoundingClientRect().top;
-					// this.stuckLimit = this.stickyLimit.offsetHeight - delta - this.getOffsetTop() - this.el.offsetHeight;
-				};
-
-				Sticky.prototype.stickOrStuck = function stickOrStuck()  {
-
-					// console.log('scrollHandler is fired');
-
-					this.isSticked = this.el.classList.contains(this.options.stickClass);
-					this.isStucked = this.el.classList.contains(this.options.stuckClass);
-
-					this.parentFromTop = parseInt(this.parent.checkVisibility.fromTop());
-
-					// ON STICK
-					if (this.parentFromTop > this.offsetTop && this.parentFromTop < this.stuckLimit && !this.isSticked) {
-						this.el.classList.add(this.options.stickClass);
-						this.options.onStick(this.el);
-						this.el.style.top = this.spacerHeight + 'px';
-					}
-
-					// ON DESTICK
-					if (this.parentFromTop <= this.offsetTop && this.isSticked ) {
-						this.el.classList.remove(this.options.stickClass);
-						this.options.onUnStick(this.el);
-						this.el.style.removeProperty('top');
-					}
-
-					// ON STUCK
-					if (this.parentFromTop >= this.stuckLimit  && !this.isStucked) {
-						this.el.classList.add(this.options.stuckClass);
-						this.options.onStuck(this.el);
-					}
-
-					// ON DESTUCK
-					if (this.parentFromTop < this.stuckLimit  && this.isStucked) {
-						this.el.classList.remove(this.options.stuckClass);
-						this.options.onUnStuck(this.el);
-					}
-
-					this.ticking = false;
-				};
-
-				return Sticky;
-
-			})(window, document);
-	}));
+				else {
+					console.log('Match la MQ et sticky DEJA instancié => on l’enable');
+					APP.stickyElem.sticky.enable();
+				}
+			}
+			else {
+				console.log('Ne Match pas la MQ et est instancié donc on disable');
+				APP.stickyElem.sticky.disable();
+			}
+		});
+	});
 
 
 /***/ },
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var __WEBPACK_AMD_DEFINE_RESULT__;(function(window, document, exportName) {
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (root, factory) {
+	    if (true) {
+	        // AMD
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(2)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	    } else if (typeof exports === 'object') {
+	        // Node, CommonJS-like
+	        module.exports = factory(require('element-closest'));
+	    } else {
+	        // Browser globals (root is window)
+	        root.Sticky = factory();
+	    }
+	}(this, function () {
 
-		var win = window;
-		var doc = document.documentElement;
-		var docBody = document.body;
+		return (function (window, document) {
 
-		var scrollY;
-		var scrollX;
+			var defaultOptions = {
+				stickClass: 'js-sticked',
+				stuckClass: 'js-stuck',
+				limitSelector: '.js-sticky-container', // must be a ancestor of el
 
-		var winHeight;
-		var winWidth;
+				offsetTop: 0,
 
-		var docHeight;
+				limitTop: function (stickyObject) {
+					return stickyObject.el.parentNode.getBoundingClientRect().top + stickyObject.getScrollY();
+				},
+				limitBottom: function (stickyObject) {
+					return stickyObject.limit.getBoundingClientRect().bottom + stickyObject.scrollY;
+				},
 
-		var viewport = {};
-
-		var trackLength;
-
-		/** @constructor
-		 *
-	     * @param {element} elem - DOM element.
-	     */
-		var CheckVisibility  = function (elem) {
-			this.elem = elem;
-
-			this.bounds = {};
-			this.deltas = {};
-
-			// init
-			this.updatePosition();
-		};
-
-		/** @function
-		 * Measure position of viewport
-		 */
-		CheckVisibility.prototype.updatePosition = function updatePosition() {
-			docHeight = Math.max(docBody.offsetHeight, doc.scrollHeight);
-			winHeight = Math.max(win.innerHeight, doc.clientHeight);
-			winWidth = Math.max(win.innerWidth, doc.clientWidth);
-		};
-
-		/** @function
-		 * Measure bounds and delta of element
-		 *
-		 * @param {Number} y - >0 and <1
-		 */
-		CheckVisibility.prototype.measure = function measure(y) {
-			var elemHeight = this.elem.offsetHeight;
-			var elemWidth = this.elem.offsetWidth;
-			var rect = this.elem.getBoundingClientRect(); // getBoundingClientRect CAUSES MAJOR REPAINT == fallback needed but no solution yet
-
-			scrollY = win.pageYOffset; // IE 10 + purpose
-			//scrollX = win.pageXOffset;
-
-			viewport = {};
-
-			viewport.top = scrollY;
-
-			//viewport.right = viewport.left + winWidth;
-			viewport.bottom = viewport.top + winHeight;
-
-			this.bounds = {
-				top :  rect.top + scrollY
-				//left :  rect.left + scrollX
+				// callbacks
+				onInit: function(){}, // (element)
+				onEnabling: function(){}, // (element)
+				onDisabling: function(){}, // (element)
+				onStick: function(){}, // (element)
+				onUnStick: function(){}, // (element)
+				onStuck: function(){}, // (element)
+				onUnStuck: function(){} // (element)
 			};
 
-			//bounds.right = bounds.left + elemWidth;
-			this.bounds.bottom = this.bounds.top + elemHeight;
-
-			if (y !== undefined) {
-				this.deltas = {
-					top : Math.min(1, (this.bounds.bottom - viewport.top) / elemHeight),
-					bottom : Math.min(1, (viewport.bottom -  this.bounds.top) / elemHeight)
-				};
+			// utils
+			function isFunction(f) {
+				return f && Object.prototype.toString.call(f) === '[object Function]';
 			}
-		};
 
-		CheckVisibility.prototype.percentageScrolled = function percentageScrolled() {
-			trackLength = docHeight - winHeight;
+			function extend(out) {
+				out = out || {};
 
-			return Math.floor(win.scrollY / trackLength * 100);
-		};
+				for (var i = 1; i < arguments.length; i++) {
+					if (!arguments[i])
+					continue;
 
-		/** @function
-		 * check if element is inView
-		 *
-		 * @param {Number} y - >0 and <1
-		 * @return {Boolean}
-		 */
-		CheckVisibility.prototype.inView = function inView(y) {
-			y = y || 0;
+					for (var key in arguments[i]) {
+						if (arguments[i].hasOwnProperty(key)) {
+							out[key] = arguments[i][key];
+						}
+					}
+				}
 
-			this.measure(y);
+				return out;
+			}
 
-			return (this.deltas.top * this.deltas.bottom) >= y; // true if elem is y x 100 % visible
-		};
+			// @contructor
+			function Sticky(el, opt) {
 
-		/** @function
-		 *
-		 * @return {Number}
-		 */
-		CheckVisibility.prototype.fromBottom = function fromBottom() {
-			this.measure();
+				this.options = extend({}, defaultOptions, opt);
 
-			return viewport.bottom - this.bounds.bottom; // distance from bottom window
-		};
+				this.el = el;
 
-		/** @function
-		 *
-		 * @return {Number}
-		 */
-		CheckVisibility.prototype.fromTop = function fromTop() {
-			this.measure();
+				this.limit = this.el.closest(this.options.limitSelector);
 
-			return viewport.top - this.bounds.top; // distance from top window
-		};
+				this.getLimitTop = function () {
+					return isFunction(this.options.limitTop) ? this.options.limitTop(this) : this.options.limitTop;
+				}.bind(this);
 
-		/** @function
-		 *
-		 * @return {Number}
-		 */
-		CheckVisibility.prototype.viewportTop = function viewportTop() {
-			this.measure();
+				this.getLimitBottom = function () {
+					return isFunction(this.options.limitBottom) ? this.options.limitBottom(this) : this.options.limitBottom;
+				}.bind(this);
 
-			return viewport.top; // Same as scrollY
-		};
+				this.getOffsetTop = function () {
+					return isFunction(this.options.offsetTop) ? this.options.offsetTop(this) : this.options.offsetTop;
+				}.bind(this);
 
-		/** @function
-		 *
-		 * @return {Number}
-		 */
-		CheckVisibility.prototype.viewportBottom = function viewportBottom() {
-			this.measure();
+				this.scrollY = 0;
 
-			return viewport.bottom; // distance from bottom scroll
-		};
+				this.offsetTop = 0;
 
-		/** @function
-		 *
-		 * @return {Boolean}
-		 */
-		CheckVisibility.prototype.bottomOfWindow = function bottomOfWindow() {
-			this.measure();
+				this.position= {
+					offsetTop: 0,
+					top: 0,
+					bottom: 0
+				};
 
-			return (viewport.top + winHeight) >= (docHeight); // return true if window scrolled to bottom
-		};
+				this.isSticked = false;
+				this.isStucked = false;
 
-		// Export our constructor
-		if (true) {
-			!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
-				return CheckVisibility;
-			}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-		}
-		else if (typeof module !== 'undefined' && module.exports) {
-			module.exports = CheckVisibility;
-		}
-		else {
-			window[exportName] = CheckVisibility;
-		}
+				this.ticking = false;
+				this.raf = null; // Request Animation Frame
 
-		return CheckVisibility;
+				this.enabled = false;
 
-	})(window, document, 'CheckVisibility');
+				this.init();
+			}
+
+			Sticky.prototype.init = function init() {
+				this.options.onInit(this);
+
+				this.updateLimit();
+
+				if(!this.enabled &&  this.el.offsetHeight < (this.limitBottom - this.limitTop)){
+					this.enable();
+				}
+			};
+
+			Sticky.prototype.onScroll = function onScroll() {
+				this.getScrollY();
+				this.requestTick();
+			};
+
+			Sticky.prototype.getScrollY = function getScrollY() {
+				this.scrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+				return this.scrollY;
+			};
+
+			Sticky.prototype.onResize = function onResize() {
+				// refresh calculation
+				this.updateLimit();
+				this.updateOffset();
+				this.updatePosition();
+			};
+
+			Sticky.prototype.requestTick = function requestTick() {
+				if (!this.ticking) {
+					this.raf = window.requestAnimationFrame(this.stickOrStuck.bind(this));
+					this.ticking = true;
+				}
+			};
+
+			Sticky.prototype.disable = function disable() {
+				// remove event handler and clean class relative to the sticky state
+				window.removeEventListener('scroll', this.onScroll);
+				window.removeEventListener('resize', this.onResize);
+
+				this.el.classList.remove(this.options.stickClass);
+				this.el.classList.remove(this.options.stuckClass);
+
+				this.el.style.removeProperty('top');
+
+				this.options.onDisabling(this);
+
+				this.enabled = false;
+			};
+
+			Sticky.prototype.enable = function enable() {
+				this.options.onEnabling(this);
+
+				this.updatePosition();
+				this.updateOffset();
+
+				this.onScroll();
+
+				this.onScroll = this.onScroll.bind(this);
+				this.onResize = this.onResize.bind(this);
+
+				window.addEventListener('scroll', this.onScroll);
+				window.addEventListener('resize', this.onResize);
+
+				this.enabled = true;
+			};
+
+			Sticky.prototype.updateLimit = function updateLimit() {
+				this.limitTop = this.getLimitTop(this);
+				this.limitBottom = this.getLimitBottom(this);
+			};
+
+			Sticky.prototype.updateOffset = function updateOffset() {
+				this.offsetTop = this.getOffsetTop(this);
+			};
+
+			Sticky.prototype.updatePosition =  function updatePosition() {
+				this.position.offsetTop = this.el.getBoundingClientRect().top;
+				this.position.top = this.position.offsetTop + this.scrollY;
+				this.position.bottom = this.position.top + this.el.offsetHeight;
+			}
+
+			Sticky.prototype.stickOrStuck = function stickOrStuck()  {
+				// console.log('scrollHandler is fired');
+
+				this.isSticked = this.el.classList.contains(this.options.stickClass);
+				this.isStucked = this.el.classList.contains(this.options.stuckClass);
+
+				// only calcul position relative to vewport
+				this.updatePosition();
+
+				console.log(this.position, this.offsetTop);
+
+				console.log('limit : ', this.limitTop, this.limitBottom);
+
+				// ON STICK
+				if (!this.isSticked && this.position.offsetTop < this.offsetTop) {
+					this.el.classList.add(this.options.stickClass);
+					this.options.onStick(this.el);
+					this.el.style.top = this.offsetTop + 'px';
+				}
+
+				// ON DESTICK
+				if (this.isSticked && this.position.top <= this.limitTop) {
+					this.el.classList.remove(this.options.stickClass);
+					this.options.onUnStick(this.el);
+					this.el.style.removeProperty('top');
+				}
+
+				// ON STUCK
+				if (!this.isStucked && this.position.bottom >= this.limitBottom) {
+					this.el.classList.add(this.options.stuckClass);
+					this.options.onStuck(this.el);
+				}
+
+				// ON DESTUCK
+				if (this.isStucked && this.position.offsetTop >= this.offsetTop) {
+					this.el.classList.remove(this.options.stuckClass);
+					this.options.onUnStuck(this.el);
+				}
+
+				this.ticking = false;
+			};
+
+			return Sticky;
+
+		})(window, document);
+	}));
 
 
 /***/ },
