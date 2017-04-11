@@ -167,7 +167,7 @@
 				if (this.parentFromTop > this.offsetTop && this.parentFromTop < this.stuckLimit && !this.isSticked) {
 					this.el.classList.add(this.options.stickClass);
 					this.options.onStick(this.el);
-					this.el.style.top = this.spacerHeight + 'px';
+					this.el.style.top = this.offsetTop + 'px';
 				}
 
 				// ON DESTICK
