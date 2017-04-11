@@ -28,13 +28,13 @@
 			},
 
 			// callbacks
-			onInit: function(){}, // (element)
-			onEnabling: function(){}, // (element)
-			onDisabling: function(){}, // (element)
-			onStick: function(){}, // (element)
-			onUnStick: function(){}, // (element)
-			onStuck: function(){}, // (element)
-			onUnStuck: function(){} // (element)
+			onInit: function () {}, // (stickyObject)
+			onEnabling: function () {}, // (stickyObject)
+			onDisabling: function () {}, // (stickyObject)
+			onStick: function () {}, // (stickyObject)
+			onUnStick: function () {}, // (stickyObject)
+			onStuck: function () {}, // (stickyObject)
+			onUnStuck: function () {} // (stickyObject)
 		};
 
 		// utils
@@ -202,27 +202,27 @@
 			// ON STICK
 			if (!this.isSticked && this.position.offsetTop < this.offsetTop) {
 				this.el.classList.add(this.options.stickClass);
-				this.options.onStick(this.el);
+				this.options.onStick(this);
 				this.el.style.top = this.offsetTop + 'px';
 			}
 
 			// ON DESTICK
 			if (this.isSticked && this.position.top <= this.limitTop) {
 				this.el.classList.remove(this.options.stickClass);
-				this.options.onUnStick(this.el);
+				this.options.onUnStick(this);
 				this.el.style.removeProperty('top');
 			}
 
 			// ON STUCK
 			if (!this.isStucked && this.position.bottom > this.limitBottom) {
 				this.el.classList.add(this.options.stuckClass);
-				this.options.onStuck(this.el);
+				this.options.onStuck(this);
 			}
 
 			// ON DESTUCK
 			if (this.isStucked && this.position.offsetTop > this.offsetTop) {
 				this.el.classList.remove(this.options.stuckClass);
-				this.options.onUnStuck(this.el);
+				this.options.onUnStuck(this);
 			}
 
 			this.ticking = false;
