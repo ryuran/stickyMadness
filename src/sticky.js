@@ -104,11 +104,7 @@
 		Sticky.prototype.init = function init() {
 			this.options.onInit(this);
 
-			this.updateLimit();
-
-			if(!this.enabled &&  this.el.offsetHeight < (this.limitBottom - this.limitTop)){
-				this.enable();
-			}
+			this.enable();
 		};
 
 		Sticky.prototype.onScroll = function onScroll() {
@@ -151,6 +147,12 @@
 		};
 
 		Sticky.prototype.enable = function enable() {
+			this.updateLimit();
+
+			if (this.enabled || this.el.offsetHeight >= (this.limitBottom - this.limitTop)) {
+				return;
+			}
+
 			this.options.onEnabling(this);
 
 			this.updatePosition();
@@ -190,6 +192,7 @@
 
 			// only calcul position relative to vewport
 			this.updatePosition();
+			this.updateLimit();
 
 			if(this.el.offsetHeight >= (this.limitBottom - this.limitTop)) {
 				this.disable();
