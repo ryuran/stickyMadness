@@ -191,9 +191,10 @@
 			// only calcul position relative to vewport
 			this.updatePosition();
 
-			console.log(this.position, this.offsetTop);
-
-			console.log('limit : ', this.limitTop, this.limitBottom);
+			if(this.el.offsetHeight >= (this.limitBottom - this.limitTop)) {
+				this.disable();
+				return;
+			}
 
 			// ON STICK
 			if (!this.isSticked && this.position.offsetTop < this.offsetTop) {
@@ -210,13 +211,13 @@
 			}
 
 			// ON STUCK
-			if (!this.isStucked && this.position.bottom >= this.limitBottom) {
+			if (!this.isStucked && this.position.bottom > this.limitBottom) {
 				this.el.classList.add(this.options.stuckClass);
 				this.options.onStuck(this.el);
 			}
 
 			// ON DESTUCK
-			if (this.isStucked && this.position.offsetTop >= this.offsetTop) {
+			if (this.isStucked && this.position.offsetTop > this.offsetTop) {
 				this.el.classList.remove(this.options.stuckClass);
 				this.options.onUnStuck(this.el);
 			}
